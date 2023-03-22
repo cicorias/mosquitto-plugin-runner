@@ -10,4 +10,4 @@ tasks:
     deps: [cert:fullset]
     cmds:
       - docker build -f ./docker/Dockerfile -t mosq-plugin:latest .
-      - docker run -it --rm -v $(pwd)/certificates:/certificates mosq-plugin
+      - docker run -it --rm -v $(pwd)/certificates:/certificates -p 1883:1883 -p 8883:8883 mosq-plugin
