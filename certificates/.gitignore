@@ -1,0 +1,8 @@
+# Ignore generated cert files
+certs
+csr
+intermediateCerts
+newcerts
+private
+index*
+serial*

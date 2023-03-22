@@ -1,0 +1,68 @@
+version: '3'
+
+tasks:
+  chain:
+    cmds:
+      - chmod 700 certGen.sh
+      - ./certGen.sh create_root_and_intermediate
+    sources:
+      - openssl_device_intermediate_ca.cnf
+      - openssl_root_ca.cnf
+    generates:
+      - certs/azure-iot-test-only.chain.ca.cert.pem
+      - certs/azure-iot-test-only.intermediate.cert.pem
+      - certs/azure-iot-test-only.root.ca.cert.pem
+      - private/azure-iot-test-only.intermediate.key.pem
+      - private/azure-iot-test-only.root.ca.key.pem
+
+  device:
+    deps: [chain]
+    cmds:
+      - ./certGen.sh create_device_certificate_from_intermediate {{default "testdevice" .DEVICE}}
+    sources:
+      - certs/azure-iot-test-only.chain.ca.cert.pem
+      - certs/azure-iot-test-only.intermediate.cert.pem
+      - certs/azure-iot-test-only.root.ca.cert.pem
+      - private/azure-iot-test-only.intermediate.key.pem
+      - private/azure-iot-test-only.root.ca.key.pem
+    generates:
+      - private/{{default "testdevice" .DEVICE}}.store.pem
+
+  server:
+    deps: [chain]
+    cmds:
+      - openssl req -x509 -newkey rsa:4096 -nodes -keyout private/server.key.pem -out certs/server.cert.pem -sha256 -days 365 -subj "/C=US/O=Contoso/OU=IoT Test/CN=mqtt1.hudsonise.com"
+      - openssl pkcs12 -export -in certs/server.cert.pem -inkey private/server.key.pem -out certs/server.cert.pfx -passout pass:1234
+    # Not really sources but this helps avoid generating server certs on every run
+    sources:
+      - certs/azure-iot-test-only.chain.ca.cert.pem
+      - certs/azure-iot-test-only.intermediate.cert.pem
+      - certs/azure-iot-test-only.root.ca.cert.pem
+    generates:
+      - private/server.key.pem
+      - certs/server.cert.pem
+      - certs/server.cert.pfx
+
+  fullset:
+    deps: [server]
+    cmds: 
+      - ./certGen.sh create_device_certificate_from_intermediate {{default "device-0001" .DEVICE}}
+      - ./certGen.sh create_device_certificate_from_intermediate {{default "device-0002" .DEVICE}}
+      - ./certGen.sh create_device_certificate_from_intermediate {{default "device-0003" .DEVICE}}
+    sources:
+      - certs/azure-iot-test-only.chain.ca.cert.pem
+      - certs/azure-iot-test-only.intermediate.cert.pem
+      - certs/azure-iot-test-only.root.ca.cert.pem
+      - private/azure-iot-test-only.intermediate.key.pem
+      - private/azure-iot-test-only.root.ca.key.pem
+    generates:
+      - private/{{default "device-0001" .DEVICE}}.store.pem
+      - private/{{default "device-0002" .DEVICE}}.store.pem
+      - private/{{default "device-0002" .DEVICE}}.store.pem
+  clean:
+    cmds:
+      - rm -rf certs csr intermediateCerts newcerts private index* serial*
+
+  default:
+    cmds:
+      - task: device

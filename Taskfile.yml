@@ -1,0 +1,13 @@
+version: '3'
+includes:
+  cert:
+    taskfile: ./certificates/Taskfile.yml
+    dir: ./certificates
+
+
+tasks:
+  mosq:
+    deps: [cert:fullset]
+    cmds:
+      - docker build -f ./docker/Dockerfile -t mosq-plugin:latest .
+      - docker run -it --rm -v $(pwd)/certificates:/certificates mosq-plugin
